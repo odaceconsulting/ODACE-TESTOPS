@@ -7,7 +7,8 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    const apiTarget = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const rawTarget = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const apiTarget = rawTarget.replace(/\/+$/, '')
     return [
       {
         source: '/health',
