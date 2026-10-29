@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: odace-postgres
+    environment:
+      POSTGRES_USER: odace_app
+      POSTGRES_PASSWORD: odace_pass
+      POSTGRES_DB: odace_testops
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odace_app -d odace_testops"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: odace-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+#  minio:
+#    image: minio/minio:latest
+#    container_name: odace-minio
+#    ports:
+#      - "9000:9000"
+#      - "9001:9001"
+
+  fake-target:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile.fake-target
+    container_name: odace-fake-target
+    ports:
+      - "8088:8088"
+    volumes:
+      - ../../apps/fake-target:/app/apps/fake-target
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  api:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile.api
+    container_name: odace-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://odace_app:odace_pass@postgres:5432/odace_testops
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../libs:/app/libs
+      - ../../apps:/app/apps
+      - ../../connectors:/app/connectors
+      - ../../migrations:/app/migrations
+      - ../../alembic.ini:/app/alembic.ini
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  minio_data:

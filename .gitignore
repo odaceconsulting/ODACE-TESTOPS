@@ -1,0 +1,45 @@
+# Dependencies & Build artifacts
+node_modules/
+.next/
+out/
+build/
+dist/
+.vercel/
+.turbo/
+*.tsbuildinfo
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.eggs/
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Temporary & local scratch files
+scratch/
+*.log
+.DS_Store
+Thumbs.db
+
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.design-cache/
+.v0-trash/

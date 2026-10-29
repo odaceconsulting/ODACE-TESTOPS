@@ -1,0 +1,11 @@
+{
+  "name": "odace-testops-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "start": "pnpm --filter web start"
+  }
+}
