@@ -2,6 +2,7 @@
 Point d'entrée principal de l'API FastAPI ODACE TestOps.
 """
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apps.api.core.config import settings
@@ -12,6 +13,23 @@ from apps.api.modules.assets.router import router as assets_router
 from apps.api.modules.audit.router import router as audit_router
 from apps.api.modules.auth.router import router as auth_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialise automatiquement le schéma et les utilisateurs de démonstration au démarrage."""
+    try:
+        from libs.persistence.database import engine, Base
+        import libs.persistence.models  # noqa: F401
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        from libs.persistence.seed_users import seed_users
+        await seed_users()
+        print("INFO: Base de donnees initialisee et utilisateurs amorces avec succes.")
+    except Exception as e:
+        print(f"WARNING: Initialisation automatique base de donnees ignoree: {e}")
+    yield
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
@@ -19,6 +37,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
+    lifespan=lifespan,
 )
 
 # Exception handlers

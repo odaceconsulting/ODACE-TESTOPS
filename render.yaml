@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: odace-testops-api
+    runtime: docker
+    dockerfilePath: deploy/docker/Dockerfile.api
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: odace-testops-db
+          property: connectionString
+
+databases:
+  - name: odace-testops-db
+    plan: free
+    region: frankfurt
