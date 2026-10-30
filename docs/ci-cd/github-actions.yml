@@ -1,0 +1,65 @@
+# Exemple d'intégration GitHub Actions avec ODACE TestOps (Guide Développeur Étape 7)
+name: Pipeline CI/CD avec Quality Gate ODACE
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  performance-quality-gate:
+    name: Tir de charge et validation Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déclencher le tir de test via Webhook HMAC
+        id: trigger_test
+        env:
+          ODACE_API_URL: ${{ secrets.ODACE_API_URL || 'https://testops.odace.ci/api/v1' }}
+          PROJECT_ID: ${{ secrets.ODACE_PROJECT_ID }}
+          WEBHOOK_SECRET: ${{ secrets.ODACE_WEBHOOK_SECRET }}
+        run: |
+          set -e
+          TIMESTAMP=$(date +%s)
+          PAYLOAD='{"threads": 100, "duration_sec": 30}'
+          
+          # Calcul de la signature HMAC-SHA256
+          SIGNATURE=$(printf "%s.%s" "$TIMESTAMP" "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | sed 's/^.* //')
+          
+          echo "Envoi de la requête de déclenchement vers ODACE..."
+          RESPONSE=$(curl -sS -X POST "$ODACE_API_URL/webhooks/incoming/$PROJECT_ID" \
+            -H "Content-Type: application/json" \
+            -H "X-Odace-Timestamp: $TIMESTAMP" \
+            -H "X-Odace-Signature: $SIGNATURE" \
+            -H "Idempotency-Key: gh-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            -d "$PAYLOAD")
+          
+          echo "Réponse ODACE: $RESPONSE"
+          RUN_ID=$(echo "$RESPONSE" | jq -r .run_id)
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_OUTPUT
+
+      - name: Attente du verdict Quality Gate (Long Polling 900s)
+        env:
+          ODACE_API_URL: ${{ secrets.ODACE_API_URL || 'https://testops.odace.ci/api/v1' }}
+          RUN_ID: ${{ steps.trigger_test.outputs.RUN_ID }}
+          ODACE_JWT_TOKEN: ${{ secrets.ODACE_JWT_TOKEN }}
+        run: |
+          set -e
+          echo "Interrogation de la Quality Gate pour le tir $RUN_ID..."
+          
+          # L'endpoint bloque jusqu'à 900 secondes en attendant la fin de l'évaluation
+          GATE_RESP=$(curl -sS "$ODACE_API_URL/runs/$RUN_ID/gate?wait=900" \
+            -H "Authorization: Bearer $ODACE_JWT_TOKEN")
+          
+          echo "$GATE_RESP" | jq .
+          
+          VERDICT=$(echo "$GATE_RESP" | jq -r .verdict)
+          echo "Verdict obtenu : $VERDICT"
+          
+          # Le pipeline échoue immédiatement si le verdict n'est pas CONFORME
+          if [ "$VERDICT" != "CONFORME" ]; then
+            echo "❌ Échec de la Quality Gate : Le tir n'est pas conforme aux seuils bloquants (p95, taux d'erreur)."
+            exit 1
+          fi
+          
+          echo "✅ Quality Gate validée avec succès !"

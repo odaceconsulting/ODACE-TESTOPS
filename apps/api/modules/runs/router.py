@@ -4,7 +4,7 @@ Routes HTTP pour la gestion des exécutions (Module Runs).
 
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -14,8 +14,9 @@ from apps.api.core.authorization import require_role
 from apps.api.core.errors import APIError
 from apps.api.modules.runs.service import RunService
 from apps.orchestrator.execution import execute_run_task
-from libs.contracts.runs import RunCreateRequest, RunResponse, RunValidationRequest
+from libs.contracts.runs import QualityGateResponse, RunCreateRequest, RunResponse, RunValidationRequest
 from libs.domain.enums import UserRole
+
 from libs.persistence.database import get_db_session
 from libs.persistence.models import Project, Environment
 
@@ -115,3 +116,27 @@ async def validate_run(
 ):
     service = RunService(db)
     return await service.validate_run(run_id, body, user)
+
+
+@router.get(
+    "/{run_id}/gate",
+    response_model=QualityGateResponse,
+    summary="Consulter le verdict de Quality Gate (avec long-polling optionnel ?wait=900)",
+)
+async def get_run_gate(
+    run_id: uuid.UUID,
+    wait: Optional[int] = Query(None, ge=0, le=900, description="Délai max d'attente en secondes pour long polling CI/CD"),
+    user: CurrentUser = Depends(require_role(
+        UserRole.DEVELOPER,
+        UserRole.TESTER,
+        UserRole.TECH_LEAD,
+        UserRole.AUDITOR,
+        UserRole.ADMIN,
+        UserRole.RESPONSABLE,
+        UserRole.EXPLOITATION,
+    )),
+    db: AsyncSession = Depends(get_db_session),
+):
+    service = RunService(db)
+    return await service.get_quality_gate(run_id, wait=wait)
+

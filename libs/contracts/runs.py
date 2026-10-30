@@ -70,3 +70,26 @@ class RunEventResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class QualityCriterion(BaseModel):
+    metric: str
+    operator: str
+    target_value: float
+    actual_value: Optional[float] = None
+    is_blocking: bool = True
+    passed: bool
+
+
+class QualityGateResponse(BaseModel):
+    """Réponse de l'évaluation Quality Gate (GET /runs/{id}/gate)."""
+    run_id: uuid.UUID
+    state: str
+    verdict: str  # CONFORME, NON_CONFORME, NON_FIABLE, INDETERMINE, EN_COURS, ECHEC_TECHNIQUE
+    is_conforme: bool
+    is_blocking_failure: bool
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+    criteria: List[QualityCriterion] = Field(default_factory=list)
+    justifications: List[str] = Field(default_factory=list)
+    evaluated_at: Optional[datetime] = None
+

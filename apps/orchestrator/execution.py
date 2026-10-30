@@ -222,10 +222,15 @@ async def execute_run_task(run_id: uuid.UUID) -> None:
             object_id=str(run.id),
             details={"verdict": verdict.value, "p95_ms": p95, "error_rate": error_rate},
         )
-        session.add(audit)
-
         await session.commit()
         logger.info("Tir %s finalisé avec verdict %s (p95=%sms)", run.id, verdict.value, p95)
+
+        # Étape 7 : Notification des webhooks abonnés
+        try:
+            from apps.orchestrator.webhooks import dispatch_run_completed_webhooks
+            await dispatch_run_completed_webhooks(run, session)
+        except Exception as e:
+            logger.warning("Erreur notification webhooks: %s", e)
 
         # RG1 : Libération de la réservation de cible à la fin du tir
         if run and run.target_id:
@@ -236,3 +241,4 @@ async def execute_run_task(run_id: uuid.UUID) -> None:
                 logger.info("Bail de la cible %s libéré pour le tir %s", run.target_id, run.id)
             except Exception as e:
                 logger.warning("Erreur libération bail cible: %s", e)
+

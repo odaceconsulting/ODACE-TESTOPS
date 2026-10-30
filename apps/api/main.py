@@ -12,6 +12,8 @@ from apps.api.modules.projects.router import router as projects_router
 from apps.api.modules.assets.router import router as assets_router
 from apps.api.modules.audit.router import router as audit_router
 from apps.api.modules.auth.router import router as auth_router
+from apps.api.modules.webhooks.router import router as webhooks_router
+
 
 
 @asynccontextmanager
@@ -58,6 +60,8 @@ app.include_router(runs_router, prefix=settings.API_V1_PREFIX)
 app.include_router(projects_router, prefix=settings.API_V1_PREFIX)
 app.include_router(assets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(audit_router, prefix=settings.API_V1_PREFIX)
+app.include_router(webhooks_router, prefix=settings.API_V1_PREFIX)
+
 
 
 @app.get("/health", tags=["Health"])
