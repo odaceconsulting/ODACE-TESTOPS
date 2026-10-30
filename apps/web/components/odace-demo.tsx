@@ -2630,6 +2630,25 @@ function RunDrawer({
                   </div>
                 </div>
               )}
+
+              {(run as any).events && (run as any).events.length > 0 && (
+                <div className="drawer-section" style={{ marginTop: '16px' }}>
+                  <h3>Journal des transitions d'état (Audit RG6)</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                    {(run as any).events.map((ev: any, idx: number) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '0.85rem' }}>
+                        <div>
+                          <strong style={{ color: '#0ea5e9' }}>{ev.to_state}</strong>
+                          <span style={{ color: '#94a3b8', marginLeft: '8px' }}>{ev.cause}</span>
+                        </div>
+                        <span style={{ color: '#64748b', fontSize: '0.75rem' }}>
+                          {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString('fr-FR') : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -2722,35 +2741,50 @@ function RunDrawer({
             </div>
           )}
 
-          {tab === 'Quality Gate' && (
-            <div className="drawer-section">
-              <h3>Critères de qualité évalués</h3>
-              <table className="quality-table">
-                <thead>
-                  <tr>
-                    <th>Métrique</th>
-                    <th>Valeur mesurée</th>
-                    <th>Seuil configuré</th>
-                    <th>Verdict</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>p95 temps de réponse</td>
-                    <td>610 ms</td>
-                    <td>&le; 800 ms (Bloquant)</td>
-                    <td><StatusBadge tone="success">Conforme</StatusBadge></td>
-                  </tr>
-                  <tr>
-                    <td>Taux d'erreur</td>
-                    <td>0,42 %</td>
-                    <td>&le; 1,0 % (Bloquant)</td>
-                    <td><StatusBadge tone="success">Conforme</StatusBadge></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
+          {tab === 'Quality Gate' && (() => {
+            const p95Val = (run as any).metrics?.p95_ms !== undefined ? (run as any).metrics.p95_ms : 610
+            const errVal = (run as any).metrics?.error_rate !== undefined ? ((run as any).metrics.error_rate * 100) : 0.42
+            const isP95Ok = p95Val <= 800
+            const isErrOk = errVal <= 1.0
+
+            return (
+              <div className="drawer-section">
+                <h3>Critères de qualité évalués</h3>
+                <table className="quality-table">
+                  <thead>
+                    <tr>
+                      <th>Métrique</th>
+                      <th>Valeur mesurée</th>
+                      <th>Seuil configuré</th>
+                      <th>Verdict</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>p95 temps de réponse</td>
+                      <td>{Math.round(p95Val)} ms</td>
+                      <td>&le; 800 ms (Bloquant)</td>
+                      <td>
+                        <StatusBadge tone={isP95Ok ? 'success' : 'danger'}>
+                          {isP95Ok ? 'Conforme' : 'Non conforme'}
+                        </StatusBadge>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Taux d'erreur</td>
+                      <td>{errVal.toFixed(2)} %</td>
+                      <td>&le; 1,0 % (Bloquant)</td>
+                      <td>
+                        <StatusBadge tone={isErrOk ? 'success' : 'danger'}>
+                          {isErrOk ? 'Conforme' : 'Non conforme'}
+                        </StatusBadge>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )
+          })()}
 
           {tab === 'Validation' && (
             <div className="drawer-section">
