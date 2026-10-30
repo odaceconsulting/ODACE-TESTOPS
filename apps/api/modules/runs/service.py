@@ -149,6 +149,9 @@ class RunService:
             state=RunState.QUEUED,
             validation=HumanValidation.EN_ATTENTE,
             created_at=utc_now(),
+            params=[],
+            events=[],
+            artifacts=[],
         )
 
         # 7. Paramètres associés

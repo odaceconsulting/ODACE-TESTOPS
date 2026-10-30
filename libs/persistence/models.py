@@ -132,9 +132,9 @@ class Run(Base):
         UniqueConstraint("project_id", "idempotency_key", name="uq_run_project_idempotency"),
     )
 
-    params: Mapped[list["RunParam"]] = relationship(back_populates="run", cascade="all, delete-orphan")
-    events: Mapped[list["RunEvent"]] = relationship(back_populates="run", cascade="all, delete-orphan")
-    artifacts: Mapped[list["Artifact"]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    params: Mapped[list["RunParam"]] = relationship(back_populates="run", cascade="all, delete-orphan", lazy="selectin")
+    events: Mapped[list["RunEvent"]] = relationship(back_populates="run", cascade="all, delete-orphan", lazy="selectin")
+    artifacts: Mapped[list["Artifact"]] = relationship(back_populates="run", cascade="all, delete-orphan", lazy="selectin")
 
 
 class RunParam(Base):
