@@ -18,6 +18,18 @@ class RunCreateRequest(BaseModel):
     secret_vault_refs: Dict[str, str] = Field(default_factory=dict)
 
 
+class ArtifactResponse(BaseModel):
+    id: uuid.UUID
+    artifact_type: str
+    object_path: str
+    sha256_hash: str
+    size_bytes: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class RunResponse(BaseModel):
     """Représentation publique d'une exécution."""
     id: uuid.UUID
@@ -30,9 +42,13 @@ class RunResponse(BaseModel):
     result: Optional[RunResult] = None
     validation: HumanValidation
     validation_comment: Optional[str] = None
+    validated_by: Optional[str] = None
+    validated_at: Optional[datetime] = None
     created_at: datetime
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
+    events: List["RunEventResponse"] = Field(default_factory=list)
+    artifacts: List[ArtifactResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

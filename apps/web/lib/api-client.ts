@@ -230,6 +230,26 @@ export interface RunApiItem {
   state: 'En attente' | 'En cours' | 'Terminée' | 'Échec' | 'Indéterminée'
   result: 'Conforme' | 'Non conforme' | 'Non fiable' | 'Non évalué'
   validation: 'En attente' | 'Validée' | 'Refusée' | 'Sans objet'
+  metrics?: {
+    p50_ms?: number
+    p95_ms?: number
+    p99_ms?: number
+    error_rate?: number
+    throughput_rps?: number
+  }
+  artifacts?: {
+    id: string
+    artifact_type: string
+    object_path: string
+    sha256_hash: string
+    size_bytes: number
+  }[]
+  events?: {
+    from_state?: string
+    to_state: string
+    cause: string
+    timestamp: string
+  }[]
 }
 
 export async function fetchRunsFromApi(): Promise<RunApiItem[] | null> {
@@ -281,6 +301,18 @@ export async function fetchRunsFromApi(): Promise<RunApiItem[] | null> {
         SANS_OBJET: 'Sans objet',
       }
 
+      const finishedEvent = (item.events || []).find((ev: any) => ev.to_state === 'FINISHED' && ev.details)
+      const details = finishedEvent?.details || {}
+
+      let durationStr = '12 min'
+      if (item.started_at && item.finished_at) {
+        const diffMs = new Date(item.finished_at).getTime() - new Date(item.started_at).getTime()
+        const diffSec = Math.max(1, Math.round(diffMs / 1000))
+        durationStr = diffSec < 60 ? `${diffSec} s` : `${Math.round(diffSec / 60)} min`
+      } else if (item.state === 'RUNNING' || item.state === 'DISPATCHED') {
+        durationStr = 'En cours...'
+      }
+
       return {
         id: `RUN-${item.id.substring(0, 4).toUpperCase()}`,
         rawId: item.id,
@@ -291,10 +323,19 @@ export async function fetchRunsFromApi(): Promise<RunApiItem[] | null> {
         env: item.environment_name || 'Recette',
         requester: item.requested_by || 'Lucas Bernard',
         date: item.created_at ? new Date(item.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 'Récent',
-        duration: item.duration || '12 min',
+        duration: durationStr,
         state: stateMap[item.state] || 'Terminée',
         result: (item.result ? resultMap[item.result] : 'Non évalué') || 'Non évalué',
         validation: valMap[item.validation] || 'En attente',
+        metrics: details.p95_ms !== undefined ? {
+          p50_ms: details.p50_ms,
+          p95_ms: details.p95_ms,
+          p99_ms: details.p99_ms,
+          error_rate: details.error_rate,
+          throughput_rps: details.throughput_rps,
+        } : undefined,
+        artifacts: item.artifacts || [],
+        events: item.events || [],
       }
     })
   } catch {

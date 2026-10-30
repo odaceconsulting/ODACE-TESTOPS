@@ -1,0 +1,33 @@
+# Image Docker du Runner officiel Apache JMeter pour ODACE TestOps
+# Exécute les campagnes de charge de manière isolée, éphémère et sécurisée (non-root)
+
+FROM eclipse-temurin:21-jre-alpine
+
+LABEL maintainer="ODACE TestOps <contact@odaceconsulting.com>"
+LABEL description="Conteneur d'exécution headless Apache JMeter pour ODACE TestOps"
+
+ARG JMETER_VERSION="5.6.3"
+ENV JMETER_HOME="/opt/apache-jmeter-${JMETER_VERSION}"
+ENV JMETER_BIN="${JMETER_HOME}/bin"
+ENV PATH="${JMETER_BIN}:${PATH}"
+
+# Dépendances système légères : curl, bash, nss
+RUN apk add --no-cache curl bash fontconfig ttf-dejavu
+
+# Téléchargement et installation d'Apache JMeter
+RUN mkdir -p /opt && \
+    curl -fsSL "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" \
+    | tar -xz -C /opt && \
+    rm -rf ${JMETER_HOME}/docs ${JMETER_HOME}/printable_docs
+
+# Création d'un utilisateur non-privilégié pour la sécurité de l'exécution
+RUN addgroup -S odace && adduser -S odace -G odace && \
+    mkdir -p /runner/work && \
+    chown -R odace:odace /runner ${JMETER_HOME}
+
+USER odace
+WORKDIR /runner/work
+
+# Commande par défaut : aide JMeter
+ENTRYPOINT ["jmeter"]
+CMD ["--help"]

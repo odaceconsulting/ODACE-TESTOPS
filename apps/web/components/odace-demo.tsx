@@ -2639,48 +2639,85 @@ function RunDrawer({
                 <div className="section-title-row">
                   <div>
                     <h3>Mesures de performance</h3>
-                    <p>100 utilisateurs virtuels · Analyse en flux</p>
+                    <p>{(run as any).metrics ? 'Mesures réelles du tir de charge · Connecteur JMeter' : '100 utilisateurs virtuels · Analyse en flux'}</p>
                   </div>
-                  <StatusBadge tone="success">Collectées</StatusBadge>
+                  <StatusBadge tone={(run as any).metrics ? 'success' : 'neutral'}>
+                    {(run as any).metrics ? 'Données réelles' : 'Collectées'}
+                  </StatusBadge>
                 </div>
                 <div className="measure-grid">
-                  <div><span>p95</span><strong>610 <small>ms</small></strong></div>
-                  <div><span>p99</span><strong>940 <small>ms</small></strong></div>
-                  <div><span>Débit</span><strong>1 642 <small>req/s</small></strong></div>
-                  <div><span>Taux d’erreur</span><strong>0,42 <small>%</small></strong></div>
+                  <div>
+                    <span>p95</span>
+                    <strong>
+                      {(run as any).metrics?.p95_ms !== undefined ? Math.round((run as any).metrics.p95_ms) : 610} <small>ms</small>
+                    </strong>
+                  </div>
+                  <div>
+                    <span>p99</span>
+                    <strong>
+                      {(run as any).metrics?.p99_ms !== undefined ? Math.round((run as any).metrics.p99_ms) : 940} <small>ms</small>
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Débit</span>
+                    <strong>
+                      {(run as any).metrics?.throughput_rps !== undefined ? Math.round((run as any).metrics.throughput_rps) : 1642} <small>req/s</small>
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Taux d’erreur</span>
+                    <strong>
+                      {(run as any).metrics?.error_rate !== undefined ? ((run as any).metrics.error_rate * 100).toFixed(2) : '0,42'} <small>%</small>
+                    </strong>
+                  </div>
                 </div>
               </div>
 
               <div className="resource-card">
-                <div><Gauge /><span>Surveillance de l'injecteur</span></div>
-                <div className="resource-bar"><span style={{ width: '68%' }} /></div>
-                <small>CPU 68%</small>
-                <div className="resource-bar memory"><span style={{ width: '54%' }} /></div>
-                <small>Mémoire 54%</small>
+                <div><Gauge /><span>Surveillance de l'injecteur conteneurisé</span></div>
+                <div className="resource-bar"><span style={{ width: '45%' }} /></div>
+                <small>CPU 45% (Conteneur isolé)</small>
+                <div className="resource-bar memory"><span style={{ width: '38%' }} /></div>
+                <small>Mémoire 38% (JVM JMeter)</small>
               </div>
             </>
           )}
 
           {tab === 'Rapports et preuves' && (
             <div className="drawer-section">
-              <h3>Artefacts & Preuves stockés dans MinIO</h3>
+              <h3>Artefacts & Preuves du tir (Audit de conformité)</h3>
               <div className="evidence-list">
-                {[
-                  ['rapport-jmeter.html', 'Rapport HTML JMeter', '1,2 Mo'],
-                  ['jmeter-summary.csv', 'Synthèse des centiles', '42 Ko'],
-                  ['capture-controle.png', 'Capture d’écran', '218 Ko'],
-                ].map(([f, label, size]) => (
-                  <div className="evidence-row" key={f}>
-                    <div className="file-icon"><FileCode2 /></div>
-                    <div>
-                      <strong>{label}</strong>
-                      <span>{f} · {size}</span>
+                {((run as any).artifacts && (run as any).artifacts.length > 0) ? (
+                  (run as any).artifacts.map((art: any) => (
+                    <div className="evidence-row" key={art.id}>
+                      <div className="file-icon"><FileCode2 /></div>
+                      <div>
+                        <strong>{art.artifact_type.toUpperCase()} - Fichier de mesures officiel</strong>
+                        <span>{art.object_path} · {Math.round(art.size_bytes / 1024) || 1} Ko · SHA: {art.sha256_hash?.substring(0, 12)}...</span>
+                      </div>
+                      <button className="icon-button" onClick={() => onNotify(`Téléchargement de l'artefact ${art.object_path}`)}>
+                        <Download />
+                      </button>
                     </div>
-                    <button className="icon-button" onClick={() => onNotify(`Téléchargement de ${f}`)}>
-                      <Download />
-                    </button>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  [
+                    ['results.jtl', 'Fichier JTL brut JMeter', '48 Ko'],
+                    ['rapport-jmeter.html', 'Rapport HTML JMeter', '1,2 Mo'],
+                    ['jmeter-summary.csv', 'Synthèse des centiles', '42 Ko'],
+                  ].map(([f, label, size]) => (
+                    <div className="evidence-row" key={f}>
+                      <div className="file-icon"><FileCode2 /></div>
+                      <div>
+                        <strong>{label}</strong>
+                        <span>{f} · {size}</span>
+                      </div>
+                      <button className="icon-button" onClick={() => onNotify(`Téléchargement de ${f}`)}>
+                        <Download />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

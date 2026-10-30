@@ -14,20 +14,45 @@ class RunRepository:
         self.session = session
 
     async def get_by_id(self, run_id: uuid.UUID) -> Optional[Run]:
-        result = await self.session.execute(select(Run).where(Run.id == run_id))
+        from sqlalchemy.orm import selectinload
+        result = await self.session.execute(
+            select(Run)
+            .where(Run.id == run_id)
+            .options(
+                selectinload(Run.params),
+                selectinload(Run.events),
+                selectinload(Run.artifacts),
+            )
+        )
         return result.scalar_one_or_none()
 
     async def find_by_idempotency(self, project_id: uuid.UUID, idempotency_key: str) -> Optional[Run]:
+        from sqlalchemy.orm import selectinload
         result = await self.session.execute(
-            select(Run).where(
+            select(Run)
+            .where(
                 Run.project_id == project_id,
                 Run.idempotency_key == idempotency_key
+            )
+            .options(
+                selectinload(Run.params),
+                selectinload(Run.events),
+                selectinload(Run.artifacts),
             )
         )
         return result.scalar_one_or_none()
 
     async def list_runs(self, project_id: Optional[uuid.UUID] = None, limit: int = 50) -> List[Run]:
-        query = select(Run).order_by(Run.created_at.desc()).limit(limit)
+        from sqlalchemy.orm import selectinload
+        query = (
+            select(Run)
+            .order_by(Run.created_at.desc())
+            .limit(limit)
+            .options(
+                selectinload(Run.events),
+                selectinload(Run.artifacts),
+            )
+        )
         if project_id:
             query = query.where(Run.project_id == project_id)
         result = await self.session.execute(query)
