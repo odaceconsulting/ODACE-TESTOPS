@@ -1,0 +1,40 @@
+# Image Docker du Runner officiel Selenium pour ODACE TestOps
+# Exécute les suites de parcours fonctionnels en conteneur headless, isolé et sécurisé (non-root)
+
+FROM python:3.12-slim
+
+LABEL maintainer="ODACE TestOps <contact@odaceconsulting.com>"
+LABEL description="Conteneur d'exécution headless Selenium pour ODACE TestOps"
+
+# Installation de Chromium et du ChromiumDriver headless
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    chromium-driver \
+    curl \
+    ca-certificates \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
+# Définition des variables pour Selenium headless
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+ENV PYTHONUNBUFFERED=1
+
+# Installation de pytest et des extensions Selenium requises par le guide
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    pytest>=8.0.0 \
+    selenium>=4.20.0 \
+    pytest-rerunfailures>=14.0
+
+# Création d'un utilisateur non-privilégié pour la sécurité de l'exécution
+RUN groupadd -r odace && useradd -r -g odace -m -d /runner odace && \
+    mkdir -p /runner/work && \
+    chown -R odace:odace /runner
+
+USER odace
+WORKDIR /runner/work
+
+# Commande par défaut : aide pytest
+ENTRYPOINT ["pytest"]
+CMD ["--help"]
